@@ -77,7 +77,7 @@ Use the provided `example.py` script for zero-shot TTS synthesis:
 ```bash
 python example.py \
     --prompt_wav path/to/reference.wav \
-    --text "Your text to synthesize" \
+    --text "Hello, this is a test of zero-shot voice cloning." \
     --lang en \
     --out output.wav \
     --config config/inference_config.yaml
