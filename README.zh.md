@@ -72,7 +72,15 @@ pip install -r requirements.txt
 
 ## 🚀 推理
 
-使用提供的 `example.py` 脚本进行zero-shot TTS 合成：
+对于访问 HuggingFace 受限的环境，运行前可设置镜像端点：
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+```
+
+### 基础用法
+
+使用提供的 `example.py` 脚本进行 zero-shot TTS 合成：
 
 ```bash
 python example.py \
@@ -103,6 +111,84 @@ audio = model.generate(
 )
 
 torchaudio.save("output.wav", audio.cpu(), model.sample_rate)
+```
+
+### vLLM 用法
+
+上面的基础路径使用 HuggingFace Transformers 运行 Text2Semantic（T2S）自回归阶段。如需更快的 T2S 生成，可切换到 **vLLM** 后端（`example_vllm.py`），通过 PagedAttention 加速 LLM 阶段。
+
+当前支持 **vLLM 0.16.0（V1 engine）**。更早的 vLLM 版本未经过测试，可能无法运行，因为模型注册和 `GPUModelRunner` 的 monkey-patch 针对的是 v1 engine 内部实现。
+
+> ⚠️ `vllm` 对 GPU 架构 / 驱动 / CUDA 有特定要求，可能无法在你的硬件上运行；直接装进基础环境可能破坏其它依赖。建议从基础环境**克隆一个独立的 conda 环境**，只安装 vLLM 的附加依赖。
+
+```bash
+# 1. 从基础环境克隆一个专用环境（继承 confuciustts 的依赖）
+conda create -n confuciustts_vllm --clone confuciustts
+conda activate confuciustts_vllm
+
+# 2. 安装 vLLM 附加依赖
+pip install -r requirements_vllm_add.txt
+
+# 3. 运行 vLLM 示例（模型在首次运行时自动下载）
+python example_vllm.py \
+    --prompt_wav path/to/reference.wav \
+    --text "要合成的文本" \
+    --lang zh \
+    --out output_vllm.wav
+```
+
+通过 `--stream` 参数同时支持非流式与流式生成：
+
+```bash
+# 非流式：合成整段语音并保存为一个 .wav
+python example_vllm.py \
+    --prompt_wav path/to/reference.wav \
+    --text "要合成的文本" \
+    --lang zh \
+    --out output_vllm.wav
+
+# 流式：逐块生成（model.generate_stream），此处拼接为一个 .wav
+python example_vllm.py \
+    --prompt_wav path/to/reference.wav \
+    --text "要合成的文本" \
+    --lang zh \
+    --out output_vllm_stream.wav \
+    --stream
+```
+
+### Web Demo
+
+提供了一个 Gradio 网页界面，可在浏览器中进行交互式 zero-shot 声音克隆：上传参考音频、输入文本、选择语言并点击生成。
+
+```bash
+python webui.py --port 7860
+```
+
+然后在浏览器打开 `http://<服务器IP>:7860`。参考音频通过 HTTP 上传到服务器，因此客户端浏览器无需与服务器共享文件系统。
+
+### 在线服务
+
+如需程序化调用（例如从另一台服务/机器调用 TTS），可使用 FastAPI 服务。它同时提供非流式与流式接口，并以 HTTP 文件上传方式接收参考音频，因此客户端与服务器无需在同一台机器上。
+
+```bash
+python server.py --port 8000
+```
+
+| 接口 | 方法 | 说明 |
+|---|---|---|
+| `/api/tts` | POST（multipart） | 非流式：返回完整的 `.wav`（PCM 16-bit） |
+| `/api/tts/stream` | POST（multipart） | 流式：原始 int16-LE PCM 分块（采样率见 `X-Sample-Rate` 头） |
+
+请求表单字段：`text`、`lang`（如 `zh`、`en`、`ja`）、`reference`（音频文件上传）。
+
+```bash
+# 非流式 → out.wav
+curl -F "text=要合成的文本" -F "lang=zh" -F "reference=@path/to/reference.wav" \
+     http://localhost:8000/api/tts -o out.wav
+
+# 流式 → 原始 int16 PCM（22050 Hz，单声道），按 X-Sample-Rate 头播放
+curl -F "text=要合成的文本" -F "lang=zh" -F "reference=@path/to/reference.wav" \
+     http://localhost:8000/api/tts/stream -o out.pcm
 ```
 
 ## 🚀 微调
