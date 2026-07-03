@@ -16,6 +16,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
+import tempfile
 
 import gradio as gr
 import soundfile as sf
@@ -47,7 +48,7 @@ def parse_args():
 def _save_audio_to_temp(audio_tensor: torch.Tensor, sample_rate: int) -> str:
     """Write the generated waveform to a temp WAV and return its path for Gradio."""
     wav = audio_tensor.cpu().squeeze(0).numpy()
-    out = Path("/tmp") / f"confucius4_webui_{uuid.uuid4().hex}.wav"
+    out = Path(tempfile.gettempdir()) / f"confucius4_webui_{uuid.uuid4().hex}.wav"
     sf.write(str(out), wav, sample_rate)
     return str(out)
 
