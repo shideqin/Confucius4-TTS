@@ -96,8 +96,6 @@ pip install -r requirements.txt
 
 ## 🚀 Inference
 
-All inference scripts auto-download the required models via HuggingFace Hub — no manual model setup is needed. If the models are not present locally they will be fetched on first run.
-
 For environments with restricted access to HuggingFace, set a mirror endpoint before running:
 
 ```bash

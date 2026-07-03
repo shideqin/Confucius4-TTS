@@ -72,8 +72,6 @@ pip install -r requirements.txt
 
 ## 🚀 推理
 
-所有推理脚本都会通过 HuggingFace Hub 自动下载所需模型，无需手动配置模型。如果本地不存在模型，首次运行时会自动拉取。
-
 对于访问 HuggingFace 受限的环境，运行前可设置镜像端点：
 
 ```bash
