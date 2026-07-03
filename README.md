@@ -96,6 +96,16 @@ pip install -r requirements.txt
 
 ## 🚀 Inference
 
+All inference scripts auto-download the required models via HuggingFace Hub — no manual model setup is needed. If the models are not present locally they will be fetched on first run.
+
+For environments with restricted access to HuggingFace, set a mirror endpoint before running:
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+```
+
+### Basic Usage
+
 Use the provided `example.py` script for zero-shot TTS synthesis:
 
 ```bash
@@ -127,6 +137,84 @@ audio = model.generate(
 )
 
 torchaudio.save("output.wav", audio.cpu(), model.sample_rate)
+```
+
+### vLLM Usage
+
+The basic path above runs the Text2Semantic (T2S) autoregressive stage with HuggingFace Transformers. For faster T2S generation you can switch to the **vLLM** backend (`example_vllm.py`), which accelerates the LLM stage with PagedAttention.
+
+We currently support **vLLM 0.16.0 (V1 engine)**. Older vLLM versions have not been tested and may not work, because the model registration and `GPUModelRunner` monkey-patches target the v1 engine internals.
+
+> ⚠️ `vllm` has specific requirements on GPU architecture / driver / CUDA. It may not run on your hardware, and installing it into the base env can break other packages. We recommend creating a **separate conda environment** cloned from the basic one, then installing only the vLLM add-on dependencies.
+
+```bash
+# 1. Clone a dedicated env from the basic env (so confuciustts deps are inherited)
+conda create -n confuciustts_vllm --clone confuciustts
+conda activate confuciustts_vllm
+
+# 2. Install the vLLM add-on dependencies
+pip install -r requirements_vllm_add.txt
+
+# 3. Run the vLLM example (models auto-download on first run)
+python example_vllm.py \
+    --prompt_wav path/to/reference.wav \
+    --text "要合成的文本" \
+    --lang zh \
+    --out output_vllm.wav
+```
+
+Both non-streaming and streaming generation are supported via the `--stream` flag:
+
+```bash
+# Non-streaming: synthesize the whole utterance and save one .wav
+python example_vllm.py \
+    --prompt_wav path/to/reference.wav \
+    --text "要合成的文本" \
+    --lang zh \
+    --out output_vllm.wav
+
+# Streaming: generate chunk-by-chunk (model.generate_stream), concatenated into one .wav here
+python example_vllm.py \
+    --prompt_wav path/to/reference.wav \
+    --text "要合成的文本" \
+    --lang zh \
+    --out output_vllm_stream.wav \
+    --stream
+```
+
+### Web Demo
+
+A Gradio web UI is provided for interactive zero-shot voice cloning in the browser. Upload a reference audio, type the text, pick a language, and click Generate.
+
+```bash
+python webui.py --port 7860
+```
+
+Then open `http://<server-ip>:7860` in your browser. The reference audio is uploaded to the server via HTTP, so the client browser does not need to share a filesystem with the server.
+
+### Online Server
+
+For programmatic access (e.g. calling TTS from another service/machine), use the FastAPI server. It exposes both non-streaming and streaming endpoints and accepts the reference audio as an HTTP file upload, so the client and server do not need to be on the same host.
+
+```bash
+python server.py --port 8000
+```
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/tts` | POST (multipart) | Non-streaming: returns a complete `.wav` (PCM 16-bit) |
+| `/api/tts/stream` | POST (multipart) | Streaming: raw int16-LE PCM chunks (sample rate in `X-Sample-Rate` header) |
+
+Request form fields: `text`, `lang` (e.g. `zh`, `en`, `ja`), `reference` (audio file upload).
+
+```bash
+# Non-streaming → out.wav
+curl -F "text=要合成的文本" -F "lang=zh" -F "reference=@path/to/reference.wav" \
+     http://localhost:8000/api/tts -o out.wav
+
+# Streaming → raw int16 PCM (22050 Hz, mono), playable per X-Sample-Rate header
+curl -F "text=要合成的文本" -F "lang=zh" -F "reference=@path/to/reference.wav" \
+     http://localhost:8000/api/tts/stream -o out.pcm
 ```
 
 ## 🚀 Fine-Tuning
