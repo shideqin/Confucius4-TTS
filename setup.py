@@ -25,7 +25,7 @@ setup(
         "sentencepiece>=0.2",
         "ema-pytorch>=0.7",
         "packaging>=26",
-        "filelock>=3.25",
+        "filelock>=3.25", "matplotlib",
         "fsspec>=2026",
         "protobuf>=3.19",
     ],
