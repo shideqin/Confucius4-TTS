@@ -25,7 +25,7 @@ setup(
         "sentencepiece>=0.2",
         "ema-pytorch>=0.7",
         "packaging>=26",
-        "filelock>=3.25", "matplotlib",
+        "filelock>=3.25",
         "fsspec>=2026",
         "inflect", "jaconv", "pykakasi", "protobuf>=3.19",
     ],
