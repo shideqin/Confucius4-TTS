@@ -27,7 +27,7 @@ setup(
         "packaging>=26",
         "filelock>=3.25", "matplotlib",
         "fsspec>=2026",
-        "protobuf>=3.19",
+        "inflect", "jaconv", "pykakasi", "protobuf>=3.19",
     ],
     extras_require={
         "train": [
